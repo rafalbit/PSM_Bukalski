@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">PSM_LAB2_Bukalski</string>
+    <string name="poro_na_tle_niegu">Poro na tle śniegu</string>
+    <string name="poro_w_niegu_na_tle_niegu">Poro w śniegu na tle śniegu</string>
+    <string name="poro_w_niegu_na_tle_niegu_ale_innego">Poro w śniegu na tle śniegu ale innego</string>
+    <string name="poro_wcina_porochrupki">Poro wcina porochrupki</string>
+    <string name="boski_poro">Boski Poro</string>
+
+    <string-array name="init_db_content">
+        <item>Artur:47</item>
+        <item>Zosia:45</item>
+        <item>Jerzyk:46</item>
+        <item>Artur:16</item>
+    </string-array>
+
+</resources>
