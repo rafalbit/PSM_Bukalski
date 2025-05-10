@@ -23,21 +23,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -50,7 +58,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,140 +69,49 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.text.font.FontWeight
 
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var dao: PersonDao
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         val db = PersonDB.getPersonDB(applicationContext)
         dao = db.personDao()
 
         setContent {
             val navController = rememberNavController()
+
             NavHost(navController = navController, startDestination = "home") {
-                composable("home") { HomeScreen(navController) }
+                composable("home") {
+                    HomeScreen(navController, dao)
+                }
                 composable("second/{message}/{message2}") { backStackEntry ->
-                    val message =
-                        backStackEntry.arguments?.getString("message") ?: "Brak wiadomości"
-                    val message2 =
-                        backStackEntry.arguments?.getString("message2") ?: "Brak wiadomości"
-                    SecondScreen(message, message2, navController)
+                    val message = backStackEntry.arguments?.getString("message") ?: "Brak"
+                    val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
+                    SecondScreen(message, message2, dao, navController)
                 }
                 composable("third/{message}/{message2}") { backStackEntry ->
-                    val message =
-                        backStackEntry.arguments?.getString("message") ?: "Brak wiadomości"
-                    val message2 =
-                        backStackEntry.arguments?.getString("message2") ?: "Brak wiadomości"
+                    val message = backStackEntry.arguments?.getString("message") ?: "Brak"
+                    val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
                     ThirdScreen(message, message2, navController)
-                }
-            }
-
-            val people = remember { mutableStateListOf<Person>() }
-            val nameFilter = remember { mutableStateOf("") }
-
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.IO) {
-                    if (dao.getSize() == 0) {
-                        val initData = resources.getStringArray(R.array.init_db_content)
-                        for (item in initData) {
-                            val parts = item.split(":")
-                            if (parts.size == 2) {
-                                dao.insert(Person(0, parts[0].uppercase(), parts[1].toInt()))
-                            }
-                        }
-                    }
-                    val all = dao.getAll()
-                    people.clear()
-                    people.addAll(all)
-                }
-            }
-
-            MaterialTheme {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    TextField(
-                        value = nameFilter.value,
-                        onValueChange = { nameFilter.value = it },
-                        label = { Text("Filter by name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row {
-                        Button(onClick = {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val all = dao.getAll()
-                                withContext(Dispatchers.Main) {
-                                    people.clear()
-                                    people.addAll(all)
-                                }
-                            }
-                        }) {
-                            Text("Display All")
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Button(onClick = {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val list = dao.findByName(nameFilter.value.uppercase())
-                                withContext(Dispatchers.Main) {
-                                    people.clear()
-                                    people.addAll(list)
-                                }
-                            }
-                        }) {
-                            Text("Find by Name")
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Button(onClick = {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val list = dao.findByAge(20)
-                                withContext(Dispatchers.Main) {
-                                    people.clear()
-                                    people.addAll(list)
-                                }
-                            }
-                        }) {
-                            Text("Age > 20")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    LazyColumn {
-                        items(people) { person ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                elevation = CardDefaults.cardElevation(4.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(text = person.name, fontWeight = FontWeight.Bold)
-                                    Text(text = "${person.age} lat")
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
     }
 }
 
+
 @Composable
-fun HomeScreen(navController: NavHostController) {
+fun HomeScreen(navController: NavHostController, dao: PersonDao) {
     // Przechowuje tekst wpisany przez użytkownika (imię i nazwisko)
     val imie = remember { mutableStateOf("") }
     val nazwisko = remember { mutableStateOf("") }
@@ -252,26 +168,31 @@ fun HomeScreen(navController: NavHostController) {
             ) {
                 Button(
                     onClick = {
-                        // Walidacja imienia
-                        if (imie.value.isNullOrEmpty()) {
-                            Toast.makeText(context, "Wprowadź poprawne imie.", Toast.LENGTH_SHORT)
-                                .show()
+                        val name = imie.value.trim().uppercase()
+                        val surname = nazwisko.value.trim().uppercase()
+
+                        if (name.isEmpty()) {
+                            Toast.makeText(context, "Wprowadź imię", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
-                        // Walidacja nazwiska
-                        if (nazwisko.value.isNullOrEmpty()) {
-                            Toast.makeText(
-                                context,
-                                "Wprowadź poprawne nazwisko.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            return@Button
-                        } else {
-                            // Sukces – przejście do drugiego ekranu z przekazaniem danych
-                            Toast.makeText(context, "Poprawnie zalogowano.", Toast.LENGTH_SHORT)
-                                .show()
-                            navController.navigate("second/${imie.value}/${nazwisko.value}")
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val user = dao.getByFullName(name, surname)
+//                            val imie = dao.getByNameExact(name)
+//                            val nazwisko = dao.getBySurnameExact(surname)
+
+                            withContext(Dispatchers.Main) {
+                                if (user != null) {
+                                    //Toast.makeText(context, "Zalogowano jako ${imie.name}", Toast.LENGTH_SHORT).show()
+                                    navController.navigate("second/${user.name}/${user.surname}")
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Użytkownik nie istnieje!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
                         }
                     },
                     modifier = Modifier
@@ -280,7 +201,7 @@ fun HomeScreen(navController: NavHostController) {
                     Text("Zaloguj", fontSize = 18.sp)
                 }
             }
-
+            // Przycisk "Zarejestruj"
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Bottom,
@@ -288,7 +209,44 @@ fun HomeScreen(navController: NavHostController) {
             ) {
                 Button(
                     onClick = {
+                        val name = imie.value.trim().uppercase()
+                        val surname = nazwisko.value.trim().uppercase()
 
+                        if (name.isEmpty()) {
+                            Toast.makeText(context, "Wprowadź imię", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        } else {
+                            if (surname.isEmpty()) {
+                                Toast.makeText(context, "Wprowadź nazwisko", Toast.LENGTH_SHORT)
+                                    .show()
+                                return@Button
+                            }
+                        }
+
+
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val user = dao.getByFullName(name, surname)
+                            if (user != null) {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        context,
+                                        "Użytkownik już istnieje!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            } else {
+                                dao.insert(Person(0, name, surname)) // domyślny wiek np. 18
+
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        context,
+                                        "Zarejestrowano jako $user",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    navController.navigate("second/$name/$surname")
+                                }
+                            }
+                        }
                     },
                     modifier = Modifier
                         .padding(top = 32.dp),
@@ -302,8 +260,14 @@ fun HomeScreen(navController: NavHostController) {
 
 
 @Composable
-fun SecondScreen(message: String, message2: String, navController: NavHostController) {
+fun SecondScreen(
+    message: String,
+    message2: String,
+    dao: PersonDao,
+    navController: NavHostController
+) {
     // Blokowanie rotacji ekranu tylko na tym ekranie (na portret)
+
     val activity = LocalContext.current as? Activity
     DisposableEffect(Unit) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -337,9 +301,11 @@ fun SecondScreen(message: String, message2: String, navController: NavHostContro
                         Sensor.TYPE_ACCELEROMETER -> {
                             accelValues.value = it.values.clone()
                         }
+
                         Sensor.TYPE_AMBIENT_TEMPERATURE -> {
                             temperatureValue.value = it.values[0]
                         }
+
                         Sensor.TYPE_LIGHT -> {
                             lightValue.value = it.values[0]
                         }
@@ -401,6 +367,171 @@ fun SecondScreen(message: String, message2: String, navController: NavHostContro
                 } ?: "Temperatura: niedostępna"
             else null
         )
+//lab4
+        val people = remember { mutableStateListOf<Person>() }
+
+        LaunchedEffect(Unit) {
+            withContext(Dispatchers.IO) {
+                val all = dao.getAll()
+                withContext(Dispatchers.Main) {
+                    people.clear()
+                    people.addAll(all)
+                }
+            }
+        }
+
+
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                var visibleItems by remember { mutableStateOf(3) } // Początkowo widoczne tylko 3 osoby
+                var isExpanded by remember { mutableStateOf(false) }
+
+                @Composable
+                fun PersonDetailsScreen(person: Person, viewModel: PersonViewModel, onBack: () -> Unit) {
+                    var newName by remember { mutableStateOf(person.name) }
+                    var newSurname by remember { mutableStateOf(person.surname) }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Edytuj lub usuń osobę", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+                        TextField(value = newName, onValueChange = { newName = it }, label = { Text("Imię") })
+                        TextField(value = newSurname, onValueChange = { newSurname = it }, label = { Text("Nazwisko") })
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(horizontalArrangement = Arrangement.SpaceEvenly) {
+                            Button(onClick = {
+                                viewModel.updatePerson(person.copy(name = newName, surname = newSurname))
+                                onBack() // Wracamy do listy
+                            }) {
+                                Text("Zapisz")
+                            }
+
+                            Button(onClick = {
+                                viewModel.deletePerson(person)
+                                onBack() // Wracamy do listy
+                            }, colors = ButtonDefaults.buttonColors(Color.Red)) {
+                                Text("Usuń")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(onClick = onBack) {
+                            Text("Powrót")
+                        }
+                    }
+                }
+
+                @Composable
+                fun PersonDropdownMenu(persons: List<Person>, viewModel: PersonViewModel) {
+                    var expanded by remember { mutableStateOf(false) }
+                    var selectedPerson by remember { mutableStateOf<Person?>(null) }
+                    var editPerson by remember { mutableStateOf<Person?>(null) }
+                    var searchQuery by remember { mutableStateOf("") }
+                    val filteredPersons = persons.filter { person ->
+                        person.name.contains(searchQuery, ignoreCase = true) ||
+                                person.surname.contains(searchQuery, ignoreCase = true)
+                    }
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        TextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            label = { Text("Szukaj osoby") },
+                            modifier = Modifier.fillMaxWidth().padding(8.dp)
+                        )
+
+                        Button(onClick = { expanded = !expanded }) {
+                            Text(selectedPerson?.name ?: "Wybierz osobę")
+                        }
+                        if (selectedPerson == null) {
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            persons.forEach { person ->
+                                DropdownMenuItem(
+                                    onClick = { selectedPerson = person },
+                                    text = { Text("${person.name} ${person.surname}") },
+                                    trailingIcon = {
+                                        Row {
+                                            IconButton(onClick = { viewModel.updatePerson(person) }) {
+                                                @androidx.compose.runtime.Composable {
+                                                    Icon(
+                                                        Icons.Filled.Edit,
+                                                        contentDescription = "Edytuj"
+                                                    )
+                                                }
+//                                                IconButton(onClick = { viewModel.deletePerson(person) }) {
+//                                                    Icon(
+//                                                        Icons.Default.Delete,
+//                                                        contentDescription = "Usuń"
+//                                                    )
+//                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        } else {
+                            // Po wybraniu osoby, pokaż ekran edycji/usuwania
+                            PersonDetailsScreen(selectedPerson!!, viewModel) { selectedPerson = null }
+                        }
+                    }
+                }
+
+
+                @Composable
+                fun showEditDialog(person: Person, viewModel: PersonViewModel, onDismiss: () -> Unit) {
+                    var newName by remember { mutableStateOf(person.name) }
+                    var newSurname by remember { mutableStateOf(person.surname) }
+
+                    AlertDialog(
+                        onDismissRequest = onDismiss,
+                        title = { Text("Edytuj osobę") },
+                        text = {
+                            Column {
+                                TextField(value = newName, onValueChange = { newName = it }, label = { Text("Imię") })
+                                TextField(value = newSurname, onValueChange = { newSurname = it }, label = { Text("Nazwisko") })
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.updatePerson(person.copy(name = newName, surname = newSurname))
+                                onDismiss()
+                            }) {
+                                Text("Zapisz")
+                            }
+                        },
+                        dismissButton = {
+                            Button(onClick = onDismiss) {
+                                Text("Anuluj")
+                            }
+                        }
+                    )
+                }
+
+
+                PersonDropdownMenu(persons = people, viewModel = PersonViewModel(dao))
+            }
+
+        }
+
 
         // Wyświetlenie aktywnych sensorów w estetycznych boxach
         if (visibleSensorTexts.isNotEmpty()) {
@@ -637,11 +768,18 @@ fun ImageCard(
                 contentAlignment = Alignment.BottomStart
             ) {
                 val offset = Offset(3.0f, 5.0f)
-                Text(title, style = TextStyle(
+                Text(
+                    title, style = TextStyle(
                         color = Color.White,
                         fontSize = 16.sp,
-                        shadow = Shadow(color = Color.Black, offset = offset, blurRadius = 3f))) } } }
+                        shadow = Shadow(color = Color.Black, offset = offset, blurRadius = 3f)
+                    )
+                )
+            }
+        }
+    }
 }
+
 @Composable
 fun SensorBox(value: String) {
     // Komponent karty, która prezentuje pojedynczą wartość z sensora

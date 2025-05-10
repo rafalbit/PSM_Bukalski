@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,9 +14,6 @@ interface PersonDao {
 
     @Query("SELECT * FROM person_table WHERE name_column LIKE :name LIMIT 10")
     fun findByName(name: String): List<Person>
-
-    @Query("SELECT * FROM person_table WHERE age_column > :age")
-    fun findByAge(age: Int): List<Person>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(person: Person)
@@ -29,4 +27,19 @@ interface PersonDao {
     @Query("SELECT * FROM person_table WHERE name_column = :name")
     suspend fun getByNameExact(name: String): Person?
 
+    @Query("SELECT * FROM person_table WHERE surname_column = :name")
+    suspend fun getBySurnameExact(name: String): Person?
+
+    @Query("SELECT * FROM person_table WHERE name_column = :name AND surname_column = :surname LIMIT 1")
+    suspend fun getByFullName(name: String, surname: String): Person?
+
+    @Query("DELETE FROM person_table WHERE id = :personId")
+    suspend fun deletePerson(personId: Long)
+
+    @Query("SELECT * FROM person_table")
+    fun getAllPersons(): Flow<List<Person>> // Automatyczne odświeżanie!
+
+
+    @Update // Dodajemy możliwość edycji!
+    suspend fun updatePerson(person: Person)
 }

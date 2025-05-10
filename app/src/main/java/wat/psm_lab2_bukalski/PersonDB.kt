@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Person::class], version = 1, exportSchema = false)
+@Database(entities = [Person::class], version = 2, exportSchema = false)
 abstract class PersonDB : RoomDatabase() {
     abstract fun personDao(): PersonDao
 
@@ -15,11 +15,13 @@ abstract class PersonDB : RoomDatabase() {
         fun getPersonDB(context: Context): PersonDB {
             if (INSTANCE == null) {
                 synchronized(this) {
-                    INSTANCE = Room.databaseBuilder(
-                        context.applicationContext,
-                        PersonDB::class.java,
-                        "personDB"
-                    ).fallbackToDestructiveMigration().build()
+                    INSTANCE =
+                        Room.databaseBuilder(
+                            context.applicationContext,
+                            PersonDB::class.java,
+                            "personDB"
+                        ).fallbackToDestructiveMigration() // ← To spowoduje, że Room usunie starą bazę i utworzy nową
+                            .build()
                 }
             }
             return INSTANCE!!
