@@ -163,24 +163,26 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
             ) {
                 Button(
                     onClick = {
+                        // Pobierz dane z pól tekstowych i przekształć na wielkie litery
                         val name = imie.value.trim().uppercase()
                         val surname = nazwisko.value.trim().uppercase()
 
+                        // Sprawdź, czy imię nie jest puste
                         if (name.isEmpty()) {
                             Toast.makeText(context, "Wprowadź imię", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
+                        // Uruchom zapytanie do bazy danych w tle
                         CoroutineScope(Dispatchers.IO).launch {
-                            val user = dao.getByFullName(name, surname)
-//                            val imie = dao.getByNameExact(name)
-//                            val nazwisko = dao.getBySurnameExact(surname)
+                            val user = dao.getByFullName(name, surname) // Wyszukaj użytkownika po imieniu i nazwisku
 
                             withContext(Dispatchers.Main) {
                                 if (user != null) {
-                                    //Toast.makeText(context, "Zalogowano jako ${imie.name}", Toast.LENGTH_SHORT).show()
+                                    // Jeśli użytkownik istnieje – przejdź do ekranu głównego
                                     navController.navigate("second/${user.name}/${user.surname}")
                                 } else {
+                                    // W przeciwnym razie pokaż komunikat
                                     Toast.makeText(
                                         context,
                                         "Użytkownik nie istnieje!",
@@ -193,9 +195,10 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
                     modifier = Modifier
                         .padding(top = 32.dp),
                 ) {
-                    Text("Zaloguj", fontSize = 18.sp)
+                    Text("Zaloguj", fontSize = 18.sp) // Tekst na przycisku
                 }
             }
+
             // Przycisk "Zarejestruj"
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -204,24 +207,28 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
             ) {
                 Button(
                     onClick = {
+                        // Pobierz i przekształć dane wejściowe do wersji wielkimi literami
                         val name = imie.value.trim().uppercase()
                         val surname = nazwisko.value.trim().uppercase()
 
+                        // Walidacja – brak imienia
                         if (name.isEmpty()) {
                             Toast.makeText(context, "Wprowadź imię", Toast.LENGTH_SHORT).show()
                             return@Button
                         } else {
+                            // Walidacja – brak nazwiska
                             if (surname.isEmpty()) {
-                                Toast.makeText(context, "Wprowadź nazwisko", Toast.LENGTH_SHORT)
-                                    .show()
+                                Toast.makeText(context, "Wprowadź nazwisko", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
                         }
 
-
+                        // Sprawdzenie, czy użytkownik już istnieje w bazie
                         CoroutineScope(Dispatchers.IO).launch {
                             val user = dao.getByFullName(name, surname)
+
                             if (user != null) {
+                                // Jeśli już istnieje – informacja
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(
                                         context,
@@ -230,7 +237,8 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
                                     ).show()
                                 }
                             } else {
-                                dao.insert(Person(0, name, surname)) // domyślny wiek np. 18
+                                // Jeśli nie istnieje – zapisz nowego użytkownika
+                                dao.insert(Person(0, name, surname))
 
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(
@@ -238,6 +246,7 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
                                         "Zarejestrowano jako $name $surname",
                                         Toast.LENGTH_SHORT
                                     ).show()
+                                    // Przejdź do kolejnego ekranu po rejestracji
                                     navController.navigate("second/$name/$surname")
                                 }
                             }

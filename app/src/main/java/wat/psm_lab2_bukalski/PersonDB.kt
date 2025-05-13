@@ -20,7 +20,7 @@ abstract class PersonDB : RoomDatabase() {
                             context.applicationContext,
                             PersonDB::class.java,
                             "personDB"
-                        ).fallbackToDestructiveMigration() // ← To spowoduje, że Room usunie starą bazę i utworzy nową
+                        ).fallbackToDestructiveMigration()
                             .build()
                 }
             }
