@@ -23,12 +23,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -44,7 +45,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,12 +70,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.text.font.FontWeight
 
 
 class MainActivity : ComponentActivity() {
@@ -276,16 +271,18 @@ fun SecondScreen(
         }
     }
 
-    // Flagi do kontrolowania widoczności danych z sensorów
-    val showTemp = rememberSaveable { mutableStateOf(false) }
-    val showLight = rememberSaveable { mutableStateOf(false) }
-    val showAccel = rememberSaveable { mutableStateOf(false) }
-
     // Przechowywanie danych z sensorów
     val context = LocalContext.current
     val accelValues = remember { mutableStateOf(FloatArray(3)) }
     val temperatureValue = remember { mutableStateOf<Float?>(null) }
     val lightValue = remember { mutableStateOf(0f) }
+
+    // Lab 4
+    val people = remember { mutableStateListOf<Person>() }
+    val searchQuery = remember { mutableStateOf("") }
+    val showList = remember { mutableStateOf(false) } // kontrola widoczności
+    val selectedPerson = remember { mutableStateOf<Person?>(null) } // (opcjonalnie)
+
 
     // Obsługa rejestracji i nasłuchu sensorów
     DisposableEffect(Unit) {
@@ -351,22 +348,6 @@ fun SecondScreen(
             )
         }
 
-        // Lista tylko aktywnych tekstów z sensorów
-        val visibleSensorTexts = listOfNotNull(
-            if (showAccel.value)
-                "Akcelerometr:\nX: %.2f, Y: %.2f, Z: %.2f".format(
-                    accelValues.value[0],
-                    accelValues.value[1],
-                    accelValues.value[2]
-                ) else null,
-            if (showLight.value)
-                "Natężenie światła:\n%.2f lx".format(lightValue.value) else null,
-            if (showTemp.value)
-                temperatureValue.value?.let {
-                    "Temperatura:\n %.1f °C".format(it)
-                } ?: "Temperatura: niedostępna"
-            else null
-        )
 //lab4
         val people = remember { mutableStateListOf<Person>() }
 
@@ -380,8 +361,6 @@ fun SecondScreen(
             }
         }
 
-
-
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -390,28 +369,48 @@ fun SecondScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                var visibleItems by remember { mutableStateOf(3) } // Początkowo widoczne tylko 3 osoby
-                var isExpanded by remember { mutableStateOf(false) }
+
 
                 @Composable
-                fun PersonDetailsScreen(person: Person, viewModel: PersonViewModel, onBack: () -> Unit) {
+                fun PersonDetailsScreen(
+                    person: Person,
+                    viewModel: PersonViewModel,
+                    onBack: () -> Unit
+                ) {
                     var newName by remember { mutableStateOf(person.name) }
                     var newSurname by remember { mutableStateOf(person.surname) }
 
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Edytuj lub usuń osobę", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Edytuj lub usuń osobę",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                        TextField(value = newName, onValueChange = { newName = it }, label = { Text("Imię") })
-                        TextField(value = newSurname, onValueChange = { newSurname = it }, label = { Text("Nazwisko") })
+                        TextField(
+                            value = newName,
+                            onValueChange = { newName = it },
+                            label = { Text("Imię") })
+                        TextField(
+                            value = newSurname,
+                            onValueChange = { newSurname = it },
+                            label = { Text("Nazwisko") })
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Row(horizontalArrangement = Arrangement.SpaceEvenly) {
                             Button(onClick = {
-                                viewModel.updatePerson(person.copy(name = newName, surname = newSurname))
+                                viewModel.updatePerson(
+                                    person.copy(
+                                        name = newName,
+                                        surname = newSurname
+                                    )
+                                )
                                 onBack() // Wracamy do listy
                             }) {
                                 Text("Zapisz")
@@ -448,109 +447,114 @@ fun SecondScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        val searchQuery = remember { mutableStateOf("") }
+                        val people = remember { mutableStateListOf<Person>() }
+
+                        LaunchedEffect(Unit) {
+                            val result = withContext(Dispatchers.IO) {
+                                dao.getAll()
+                            }
+                            people.clear()
+                            people.addAll(result)
+                        }
+
+
                         TextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            label = { Text("Szukaj osoby") },
-                            modifier = Modifier.fillMaxWidth().padding(8.dp)
+                            value = searchQuery.value,
+                            onValueChange = { searchQuery.value = it },
+                            label = { Text("Wpisz imię, nazwisko lub oba") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
                         )
 
-                        Button(onClick = { expanded = !expanded }) {
+                        Button(onClick = {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val result = if (searchQuery.value.isBlank()) {
+                                    dao.getAll()
+                                } else {
+                                    dao.searchByNameOrSurname(searchQuery.value.trim().uppercase())
+                                }
+                                withContext(Dispatchers.Main) {
+                                    people.clear()
+                                    people.addAll(result)
+                                    showList.value = true // 👈 pokaż listę po kliknięciu przycisku
+                                }
+                            }
+                        }) {
+                            Text("Filtruj")
+                        }
+
+                        if (showList.value) {
+                            LazyColumn {
+                                items(people.take(4)) { person ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(4.dp),
+                                        elevation = CardDefaults.cardElevation(4.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(text = "${person.name} ${person.surname}")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+
+                        Button(onClick = {
+                            expanded = !expanded
+                            showList.value = false  // ukrywaj listę po kliknięciu przycisku
+                        }) {
                             Text(selectedPerson?.name ?: "Wybierz osobę")
+
                         }
                         if (selectedPerson == null) {
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            persons.forEach { person ->
-                                DropdownMenuItem(
-                                    onClick = { selectedPerson = person },
-                                    text = { Text("${person.name} ${person.surname}") },
-                                    trailingIcon = {
-                                        Row {
-                                            IconButton(onClick = { viewModel.updatePerson(person) }) {
-                                                @androidx.compose.runtime.Composable {
-                                                    Icon(
-                                                        Icons.Filled.Edit,
-                                                        contentDescription = "Edytuj"
-                                                    )
-                                                }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                persons.forEach { person ->
+                                    DropdownMenuItem(
+                                        onClick = { selectedPerson = person },
+                                        text = { Text("${person.name} ${person.surname}") },
+                                        trailingIcon = {
+                                            Row {
+                                                IconButton(onClick = { viewModel.updatePerson(person) }) {
+                                                    @androidx.compose.runtime.Composable {
+                                                        Icon(
+                                                            Icons.Filled.Edit,
+                                                            contentDescription = "Edytuj"
+                                                        )
+                                                    }
 //                                                IconButton(onClick = { viewModel.deletePerson(person) }) {
 //                                                    Icon(
 //                                                        Icons.Default.Delete,
 //                                                        contentDescription = "Usuń"
 //                                                    )
 //                                                }
+                                                }
                                             }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
-                        }
                         } else {
                             // Po wybraniu osoby, pokaż ekran edycji/usuwania
-                            PersonDetailsScreen(selectedPerson!!, viewModel) { selectedPerson = null }
+                            PersonDetailsScreen(selectedPerson!!, viewModel) {
+                                selectedPerson = null
+                            }
                         }
                     }
                 }
-
-
-                @Composable
-                fun showEditDialog(person: Person, viewModel: PersonViewModel, onDismiss: () -> Unit) {
-                    var newName by remember { mutableStateOf(person.name) }
-                    var newSurname by remember { mutableStateOf(person.surname) }
-
-                    AlertDialog(
-                        onDismissRequest = onDismiss,
-                        title = { Text("Edytuj osobę") },
-                        text = {
-                            Column {
-                                TextField(value = newName, onValueChange = { newName = it }, label = { Text("Imię") })
-                                TextField(value = newSurname, onValueChange = { newSurname = it }, label = { Text("Nazwisko") })
-                            }
-                        },
-                        confirmButton = {
-                            Button(onClick = {
-                                viewModel.updatePerson(person.copy(name = newName, surname = newSurname))
-                                onDismiss()
-                            }) {
-                                Text("Zapisz")
-                            }
-                        },
-                        dismissButton = {
-                            Button(onClick = onDismiss) {
-                                Text("Anuluj")
-                            }
-                        }
-                    )
-                }
-
 
                 PersonDropdownMenu(persons = people, viewModel = PersonViewModel(dao))
-            }
-
-        }
-
-
-        // Wyświetlenie aktywnych sensorów w estetycznych boxach
-        if (visibleSensorTexts.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .padding(bottom = 40.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.SpaceEvenly,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    visibleSensorTexts.forEach {
-                        SensorBox(it) // Pudełko zawierające opis jednego sensora
-                    }
-                }
             }
         }
 
@@ -571,22 +575,45 @@ fun SecondScreen(
                 Text("Zobacz swoją galerię")
             }
             Button(
-                onClick = { showAccel.value = !showAccel.value },
+                onClick = {
+                    val (x, y, z) = accelValues.value
+                    Toast.makeText(
+                        context,
+                        "Prędkość (akcelerometr):\nX: %.2f, Y: %.2f, Z: %.2f".format(x, y, z),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
                 Modifier.width(230.dp)
             ) {
-                Text("Pokaż / ukryj prędkość")
+                Text("Pokaż prędkość")
             }
+
             Button(
-                onClick = { showLight.value = !showLight.value },
+                onClick = {
+                    Toast.makeText(
+                        context,
+                        "Natężenie światła: %.2f lx".format(lightValue.value),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
                 Modifier.width(230.dp)
             ) {
-                Text("Pokaż / ukryj światło")
+                Text("Pokaż światło")
             }
+
             Button(
-                onClick = { showTemp.value = !showTemp.value },
+                onClick = {
+                    val temp = temperatureValue.value
+                    val msg = if (temp != null) {
+                        "Temperatura: %.1f °C".format(temp)
+                    } else {
+                        "Temperatura: niedostępna"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                },
                 Modifier.width(230.dp)
             ) {
-                Text("Pokaż / ukryj temperaturę")
+                Text("Pokaż temperaturę")
             }
         }
 

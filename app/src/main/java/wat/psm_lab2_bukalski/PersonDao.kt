@@ -39,7 +39,16 @@ interface PersonDao {
     @Query("SELECT * FROM person_table")
     fun getAllPersons(): Flow<List<Person>> // Automatyczne odświeżanie!
 
-
     @Update // Dodajemy możliwość edycji!
     suspend fun updatePerson(person: Person)
+
+    @Query("""
+    SELECT * FROM person_table
+    WHERE 
+        (name_column || ' ' || surname_column) LIKE '%' || :query || '%'
+        OR name_column LIKE '%' || :query || '%'
+        OR surname_column LIKE '%' || :query || '%'
+""")
+    suspend fun searchByNameOrSurname(query: String): List<Person>
+
 }
