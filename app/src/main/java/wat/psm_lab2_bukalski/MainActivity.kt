@@ -235,7 +235,7 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(
                                         context,
-                                        "Zarejestrowano jako $user",
+                                        "Zarejestrowano jako $name $surname",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                     navController.navigate("second/$name/$surname")
@@ -278,10 +278,8 @@ fun SecondScreen(
     val lightValue = remember { mutableStateOf(0f) }
 
     // Lab 4
-    val people = remember { mutableStateListOf<Person>() }
-    val searchQuery = remember { mutableStateOf("") }
     val showList = remember { mutableStateOf(false) } // kontrola widoczności
-    val selectedPerson = remember { mutableStateOf<Person?>(null) } // (opcjonalnie)
+    val isFiltering = remember { mutableStateOf(true) }
 
 
     // Obsługa rejestracji i nasłuchu sensorów
@@ -426,7 +424,9 @@ fun SecondScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        Button(onClick = onBack) {
+                        Button(onClick = {
+                            onBack
+                            isFiltering.value = false}) {
                             Text("Powrót")
                         }
                     }
@@ -436,12 +436,6 @@ fun SecondScreen(
                 fun PersonDropdownMenu(persons: List<Person>, viewModel: PersonViewModel) {
                     var expanded by remember { mutableStateOf(false) }
                     var selectedPerson by remember { mutableStateOf<Person?>(null) }
-                    var editPerson by remember { mutableStateOf<Person?>(null) }
-                    var searchQuery by remember { mutableStateOf("") }
-                    val filteredPersons = persons.filter { person ->
-                        person.name.contains(searchQuery, ignoreCase = true) ||
-                                person.surname.contains(searchQuery, ignoreCase = true)
-                    }
 
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -478,7 +472,8 @@ fun SecondScreen(
                                 withContext(Dispatchers.Main) {
                                     people.clear()
                                     people.addAll(result)
-                                    showList.value = true // 👈 pokaż listę po kliknięciu przycisku
+                                    showList.value = true // pokaż listę po kliknięciu przycisku
+                                    isFiltering.value = true
                                 }
                             }
                         }) {
@@ -511,6 +506,7 @@ fun SecondScreen(
                         Button(onClick = {
                             expanded = !expanded
                             showList.value = false  // ukrywaj listę po kliknięciu przycisku
+                            isFiltering.value = true
                         }) {
                             Text(selectedPerson?.name ?: "Wybierz osobę")
 
@@ -533,12 +529,6 @@ fun SecondScreen(
                                                             contentDescription = "Edytuj"
                                                         )
                                                     }
-//                                                IconButton(onClick = { viewModel.deletePerson(person) }) {
-//                                                    Icon(
-//                                                        Icons.Default.Delete,
-//                                                        contentDescription = "Usuń"
-//                                                    )
-//                                                }
                                                 }
                                             }
                                         }
@@ -559,61 +549,63 @@ fun SecondScreen(
         }
 
         // Przyciski sterujące widocznością sensorów oraz nawigacją
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Button(
-                onClick = {
-                    navController.navigate("third/${message}/${message2}")
-                },
-                Modifier.width(230.dp)
+        if (!isFiltering.value) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text("Zobacz swoją galerię")
-            }
-            Button(
-                onClick = {
-                    val (x, y, z) = accelValues.value
-                    Toast.makeText(
-                        context,
-                        "Prędkość (akcelerometr):\nX: %.2f, Y: %.2f, Z: %.2f".format(x, y, z),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                },
-                Modifier.width(230.dp)
-            ) {
-                Text("Pokaż prędkość")
-            }
+                Button(
+                    onClick = {
+                        navController.navigate("third/${message}/${message2}")
+                    },
+                    Modifier.width(230.dp)
+                ) {
+                    Text("Zobacz swoją galerię")
+                }
+                Button(
+                    onClick = {
+                        val (x, y, z) = accelValues.value
+                        Toast.makeText(
+                            context,
+                            "Prędkość (akcelerometr):\nX: %.2f, Y: %.2f, Z: %.2f".format(x, y, z),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    Modifier.width(230.dp)
+                ) {
+                    Text("Pokaż prędkość")
+                }
 
-            Button(
-                onClick = {
-                    Toast.makeText(
-                        context,
-                        "Natężenie światła: %.2f lx".format(lightValue.value),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                },
-                Modifier.width(230.dp)
-            ) {
-                Text("Pokaż światło")
-            }
+                Button(
+                    onClick = {
+                        Toast.makeText(
+                            context,
+                            "Natężenie światła: %.2f lx".format(lightValue.value),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    Modifier.width(230.dp)
+                ) {
+                    Text("Pokaż światło")
+                }
 
-            Button(
-                onClick = {
-                    val temp = temperatureValue.value
-                    val msg = if (temp != null) {
-                        "Temperatura: %.1f °C".format(temp)
-                    } else {
-                        "Temperatura: niedostępna"
-                    }
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                },
-                Modifier.width(230.dp)
-            ) {
-                Text("Pokaż temperaturę")
+                Button(
+                    onClick = {
+                        val temp = temperatureValue.value
+                        val msg = if (temp != null) {
+                            "Temperatura: %.1f °C".format(temp)
+                        } else {
+                            "Temperatura: niedostępna"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    },
+                    Modifier.width(230.dp)
+                ) {
+                    Text("Pokaż temperaturę")
+                }
             }
         }
 
@@ -622,8 +614,20 @@ fun SecondScreen(
             Modifier.align(Alignment.TopEnd)
         ) {
             Row(
-                horizontalArrangement = Arrangement.End
+                Modifier.fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+
             ) {
+                Button(
+                    onClick = {
+                        isFiltering.value = isFiltering.value.not()
+                    },
+                    modifier = Modifier.padding(16.dp),
+
+                    ) {
+                    Text("Opcje")
+                }
                 Button(
                     onClick = {
                         navController.navigate("home") // Powrót do ekranu logowania
@@ -807,23 +811,23 @@ fun ImageCard(
     }
 }
 
-@Composable
-fun SensorBox(value: String) {
-    // Komponent karty, która prezentuje pojedynczą wartość z sensora
-    Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth(0.85f),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        // Tekst z wartością sensora, wyśrodkowany wewnątrz karty
-        Text(
-            text = value,
-            modifier = Modifier.padding(8.dp),
-            style = TextStyle(fontSize = 15.sp, color = Color.Black)
-        )
-    }
-}
+//@Composable
+//fun SensorBox(value: String) {
+//    // Komponent karty, która prezentuje pojedynczą wartość z sensora
+//    Card(
+//        modifier = Modifier
+//            .padding(8.dp)
+//            .fillMaxWidth(0.85f),
+//        shape = RoundedCornerShape(12.dp),
+//        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+//        colors = CardDefaults.cardColors(containerColor = Color.White)
+//    ) {
+//        // Tekst z wartością sensora, wyśrodkowany wewnątrz karty
+//        Text(
+//            text = value,
+//            modifier = Modifier.padding(8.dp),
+//            style = TextStyle(fontSize = 15.sp, color = Color.Black)
+//        )
+//    }
+//}
 
