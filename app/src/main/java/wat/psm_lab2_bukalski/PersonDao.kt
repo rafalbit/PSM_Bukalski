@@ -16,14 +16,14 @@ interface PersonDao {
     fun findByName(name: String): List<Person>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(person: Person)
+    suspend fun insert(person: Person)
 
     @Query("DELETE FROM person_table")
     fun clearDB()
 
     @Query("SELECT COUNT(*) FROM person_table")
     fun getSize(): Int
-    // do logowania się w bazie danych
+
     @Query("SELECT * FROM person_table WHERE name_column = :name")
     suspend fun getByNameExact(name: String): Person?
 
@@ -37,9 +37,9 @@ interface PersonDao {
     suspend fun deletePerson(personId: Long)
 
     @Query("SELECT * FROM person_table")
-    fun getAllPersons(): Flow<List<Person>> // Automatyczne odświeżanie!
+    fun getAllPersons(): Flow<List<Person>>
 
-    @Update // Dodajemy możliwość edycji!
+    @Update
     suspend fun updatePerson(person: Person)
 
     @Query("""

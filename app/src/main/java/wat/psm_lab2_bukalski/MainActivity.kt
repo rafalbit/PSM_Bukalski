@@ -1,5 +1,5 @@
 package wat.psm_lab2_bukalski
-// BUKALSKI LAB4
+// BUKALSKI LAB5
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
@@ -71,33 +71,57 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+//lab6
+import org.koin.core.context.startKoin
+import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.compose.getViewModel
+import org.koin.androidx.compose.koinViewModel
+import wat.psm_lab2_bukalski.appModule
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var dao: PersonDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val db = PersonDB.getPersonDB(applicationContext)
-        dao = db.personDao()
+            super.onCreate(savedInstanceState)
+        // lab 6
+        startKoin {
+            androidContext(this@MainActivity)
+            modules(appModule)
+        }
 
         setContent {
+
             val navController = rememberNavController()
 
             NavHost(navController = navController, startDestination = "home") {
                 composable("home") {
-                    HomeScreen(navController, dao)
+                    HomeScreen(navController)
                 }
                 composable("second/{message}/{message2}") { backStackEntry ->
                     val message = backStackEntry.arguments?.getString("message") ?: "Brak"
                     val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
-                    SecondScreen(message, message2, dao, navController)
+                    SecondScreen(message, message2, navController)
+                }
+                composable("second") { backStackEntry ->
+                    val message = backStackEntry.arguments?.getString("message") ?: "Brak"
+                    val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
+                    SecondScreen(message, message2, navController)
                 }
                 composable("third/{message}/{message2}") { backStackEntry ->
                     val message = backStackEntry.arguments?.getString("message") ?: "Brak"
                     val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
                     ThirdScreen(message, message2, navController)
+                }
+                // lab 5
+                composable("thread/{message}/{message2}") { backStackEntry ->
+                    val message = backStackEntry.arguments?.getString("message") ?: "Brak"
+                    val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
+                    ThreadScreen(message, message2, navController)
+                }
+                composable("workmanager/{message}/{message2}") { backStackEntry ->
+                    val message = backStackEntry.arguments?.getString("message") ?: "Brak"
+                    val message2 = backStackEntry.arguments?.getString("message2") ?: "Brak"
+                    WorkManagerScreen(message, message2, navController)
                 }
             }
         }
@@ -106,7 +130,10 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun HomeScreen(navController: NavHostController, dao: PersonDao) {
+fun HomeScreen(navController: NavHostController) {
+    // lab 6
+    val viewModel: PersonViewModel = koinViewModel()
+
     // Przechowuje tekst wpisany przez użytkownika (imię i nazwisko)
     val imie = remember { mutableStateOf("") }
     val nazwisko = remember { mutableStateOf("") }
@@ -175,7 +202,7 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
 
                         // Uruchom zapytanie do bazy danych w tle
                         CoroutineScope(Dispatchers.IO).launch {
-                            val user = dao.getByFullName(name, surname) // Wyszukaj użytkownika po imieniu i nazwisku
+                            val user = viewModel.getUserByFullName(name, surname) // Wyszukaj użytkownika po imieniu i nazwisku
 
                             withContext(Dispatchers.Main) {
                                 if (user != null) {
@@ -225,7 +252,7 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
 
                         // Sprawdzenie, czy użytkownik już istnieje w bazie
                         CoroutineScope(Dispatchers.IO).launch {
-                            val user = dao.getByFullName(name, surname)
+                            val user = viewModel.getUserByFullName(name, surname)
 
                             if (user != null) {
                                 // Jeśli już istnieje – informacja
@@ -238,7 +265,7 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
                                 }
                             } else {
                                 // Jeśli nie istnieje – zapisz nowego użytkownika
-                                dao.insert(Person(0, name, surname))
+                                viewModel.addPerson(name, surname)
 
                                 withContext(Dispatchers.Main) {
                                     Toast.makeText(
@@ -267,9 +294,10 @@ fun HomeScreen(navController: NavHostController, dao: PersonDao) {
 fun SecondScreen(
     message: String,
     message2: String,
-    dao: PersonDao,
     navController: NavHostController
 ) {
+    val viewModel: PersonViewModel = koinViewModel()
+
     // Blokowanie rotacji ekranu tylko na tym ekranie (na portret)
 
     val activity = LocalContext.current as? Activity
@@ -360,10 +388,9 @@ fun SecondScreen(
 
         LaunchedEffect(Unit) {
             withContext(Dispatchers.IO) {
-                val all = dao.getAll()
-                withContext(Dispatchers.Main) {
+                viewModel.loadAll { result ->
                     people.clear()
-                    people.addAll(all)
+                    people.addAll(result)
                 }
             }
         }
@@ -376,8 +403,25 @@ fun SecondScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // lab 5 ----------------------------------
+                ShakeCounter()
 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ){
+                    Button(onClick = { navController.navigate("thread/${message}/${message2}") }) {
+                        Text("Czasomierz")
+                    }
 
+                    Button(onClick = { navController.navigate("workmanager/${message}/${message2}") }) {
+                        Text("Praca")
+                    }
+                }
+
+                //-----------------------------------------------------
                 @Composable
                 fun PersonDetailsScreen(
                     person: Person,
@@ -454,11 +498,10 @@ fun SecondScreen(
                         val people = remember { mutableStateListOf<Person>() }
 
                         LaunchedEffect(Unit) {
-                            val result = withContext(Dispatchers.IO) {
-                                dao.getAll()
+                            viewModel.loadAll { result ->
+                                people.clear()
+                                people.addAll(result)
                             }
-                            people.clear()
-                            people.addAll(result)
                         }
 
 
@@ -473,15 +516,10 @@ fun SecondScreen(
 
                         Button(onClick = {
                             CoroutineScope(Dispatchers.IO).launch {
-                                val result = if (searchQuery.value.isBlank()) {
-                                    dao.getAll()
-                                } else {
-                                    dao.searchByNameOrSurname(searchQuery.value.trim().uppercase())
-                                }
-                                withContext(Dispatchers.Main) {
+                                viewModel.search(searchQuery.value.trim().uppercase()) { result ->
                                     people.clear()
                                     people.addAll(result)
-                                    showList.value = true // pokaż listę po kliknięciu przycisku
+                                    showList.value = true
                                     isFiltering.value = true
                                 }
                             }
@@ -553,7 +591,7 @@ fun SecondScreen(
                     }
                 }
 
-                PersonDropdownMenu(persons = people, viewModel = PersonViewModel(dao))
+                PersonDropdownMenu(persons = people, viewModel = viewModel)
             }
         }
 

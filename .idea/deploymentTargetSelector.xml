@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-05-10T21:23:14.015818400Z">
+        <DropdownSelection timestamp="2025-05-21T02:52:48.989846700Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\rbuka\.android\avd\Medium_Phone.avd" />
