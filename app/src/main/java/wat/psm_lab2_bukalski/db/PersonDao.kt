@@ -1,4 +1,4 @@
-package wat.psm_lab2_bukalski
+package wat.psm_lab2_bukalski.db
 
 import androidx.room.Dao
 import androidx.room.Insert

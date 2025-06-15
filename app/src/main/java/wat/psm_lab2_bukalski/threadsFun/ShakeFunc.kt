@@ -1,4 +1,4 @@
-package wat.psm_lab2_bukalski
+package wat.psm_lab2_bukalski.threadsFun
 
 import android.content.Context
 import android.hardware.Sensor

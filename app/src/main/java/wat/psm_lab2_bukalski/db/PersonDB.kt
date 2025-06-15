@@ -1,4 +1,4 @@
-package wat.psm_lab2_bukalski
+package wat.psm_lab2_bukalski.db
 
 import android.content.Context
 import androidx.room.Database

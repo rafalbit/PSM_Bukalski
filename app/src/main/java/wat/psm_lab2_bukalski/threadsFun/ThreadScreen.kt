@@ -1,4 +1,4 @@
-package wat.psm_lab2_bukalski
+package wat.psm_lab2_bukalski.threadsFun
 
 import android.os.Handler
 import android.os.Looper

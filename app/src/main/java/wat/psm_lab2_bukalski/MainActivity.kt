@@ -1,5 +1,6 @@
 package wat.psm_lab2_bukalski
-// BUKALSKI LAB5
+// BUKALSKI LAB7
+
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
@@ -41,6 +42,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,31 +64,41 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-//lab6
-import org.koin.core.context.startKoin
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.compose.getViewModel
 import org.koin.androidx.compose.koinViewModel
-import wat.psm_lab2_bukalski.appModule
+import org.koin.core.context.startKoin
+import org.koin.dsl.module
+import wat.psm_lab2_bukalski.db.Person
+import wat.psm_lab2_bukalski.db.PersonViewModel
+import wat.psm_lab2_bukalski.threadsFun.ShakeCounter
+import wat.psm_lab2_bukalski.threadsFun.ThreadScreen
+import wat.psm_lab2_bukalski.threadsFun.WorkManagerScreen
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+
 
 class MainActivity : ComponentActivity() {
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
-        // lab 6
+        // lab 6, lab 7
         startKoin {
             androidContext(this@MainActivity)
-            modules(appModule)
+            modules(listOf(networkModule,AppModule))
         }
 
         setContent {
@@ -94,6 +106,10 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
 
             NavHost(navController = navController, startDestination = "home") {
+                composable("udpScreen"){
+                    UdpScreen(koinViewModel(), navController)
+                }
+
                 composable("home") {
                     HomeScreen(navController)
                 }
@@ -283,6 +299,22 @@ fun HomeScreen(navController: NavHostController) {
                         .padding(top = 32.dp),
                 ) {
                     Text("Zarejestruj", fontSize = 18.sp)
+                }
+            }
+            // Przycisk "Komunikacja UDP"
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    onClick = {
+                        navController.navigate("udpScreen")
+                    },
+                    modifier = Modifier
+                        .padding(top = 48.dp),
+                ) {
+                    Text("Komunikacja UDP", fontSize = 18.sp)
                 }
             }
         }
@@ -858,23 +890,106 @@ fun ImageCard(
     }
 }
 
-//@Composable
-//fun SensorBox(value: String) {
-//    // Komponent karty, która prezentuje pojedynczą wartość z sensora
-//    Card(
-//        modifier = Modifier
-//            .padding(8.dp)
-//            .fillMaxWidth(0.85f),
-//        shape = RoundedCornerShape(12.dp),
-//        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-//        colors = CardDefaults.cardColors(containerColor = Color.White)
-//    ) {
-//        // Tekst z wartością sensora, wyśrodkowany wewnątrz karty
-//        Text(
-//            text = value,
-//            modifier = Modifier.padding(8.dp),
-//            style = TextStyle(fontSize = 15.sp, color = Color.Black)
-//        )
-//    }
-//}
+class UdpViewModel(private val udpClient: UdpClient) : ViewModel() {
 
+    private val _receivedMessage = MutableStateFlow("")
+    val receivedMessage: StateFlow<String> = _receivedMessage
+
+    fun sendUdpMessage(message: String) {
+        viewModelScope.launch {
+            udpClient.sendMessage(message)
+        }
+    }
+
+    fun startListening() {
+        viewModelScope.launch {
+            while (true) {
+                val message = udpClient.receiveMessage()
+                _receivedMessage.value = message
+            }
+        }
+    }
+}
+
+class UdpClient(private val serverAddress: String, private val serverPort: Int) {
+
+    suspend fun sendMessage(message: String) {
+        withContext(Dispatchers.IO) {
+            DatagramSocket().use { socket ->
+                val buffer = message.toByteArray()
+                val packet = DatagramPacket(
+                    buffer,
+                    buffer.size,
+                    InetAddress.getByName(serverAddress),
+                    serverPort
+                )
+                socket.send(packet)
+            }
+        }
+    }
+
+    suspend fun receiveMessage(): String {
+        return withContext(Dispatchers.IO) {
+            DatagramSocket(serverPort).use { socket ->
+                val buffer = ByteArray(1024)
+                val packet = DatagramPacket(buffer, buffer.size)
+                socket.receive(packet)
+                String(packet.data, 0, packet.length)
+            }
+        }
+    }
+}
+val networkModule = module {
+    single { UdpClient(serverAddress = "192.168.1.57", serverPort = 12345) }
+}
+
+@Composable
+fun UdpScreen(
+    viewModel: UdpViewModel ,
+    navController: NavHostController
+) {
+    val received by viewModel.receivedMessage.collectAsState()
+
+    var textToSend by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.padding(32.dp)
+        .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center) {
+        TextField(
+            value = textToSend,
+            onValueChange = { textToSend = it },
+            label = { Text("Wiadomość UDP") }
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = {
+            viewModel.sendUdpMessage(textToSend)
+        }) {
+            Text("Wyślij")
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text("Odebrano: $received")
+        Spacer(Modifier.height(32.dp))
+
+        // Przycisk "Komunikacja UDP"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Button(
+                onClick = {
+                    navController.navigate("home")
+                }
+            ) {
+                Text("Cofnij", fontSize = 18.sp)
+            }
+        }
+    }
+
+    // uruchomienie nasłuchiwania po pierwszym załadowaniu
+    LaunchedEffect(Unit) {
+        viewModel.startListening()
+    }
+}

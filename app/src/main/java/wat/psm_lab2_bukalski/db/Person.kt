@@ -1,4 +1,4 @@
-package wat.psm_lab2_bukalski
+package wat.psm_lab2_bukalski.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

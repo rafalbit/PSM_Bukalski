@@ -1,4 +1,4 @@
-package wat.psm_lab2_bukalski
+package wat.psm_lab2_bukalski.threadsFun
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import wat.psm_lab2_bukalski.threadsFun.MyWorker
 
 @Composable
 fun WorkManagerScreen(message: String, message2: String, navController: NavHostController) {
